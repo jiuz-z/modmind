@@ -31,3 +31,7 @@ ui-check*.jpg
 /scripts/restore-timeline.py
 /scripts/smoke-loader-templates.ts
 /scripts/smoke-packaged-app.mjs
+
+# Local dev scripts
+同步上游并发布.bat
+启动开发模式.bat
