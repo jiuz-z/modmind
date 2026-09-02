@@ -67,7 +67,7 @@ npm install
 npm run dev
 ```
 
-或直接双击项目根目录下的 `dev-launcher.bat`。
+或直接双击项目根目录下的 `启动开发模式.bat`。
 
 ## 项目结构
 
