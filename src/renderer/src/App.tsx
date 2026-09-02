@@ -5344,7 +5344,7 @@ export default function App(): React.JSX.Element {
                     onReasoningLevelChange={(reasoningLevel) => void saveBeginnerAiPreference({ reasoningLevel })}
                     onFastModeChange={(fastMode) => void saveBeginnerAiPreference({ fastMode })}
                   />
-                  <div className="custom-api-provider-section" style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border, #2a2f3a)' }}>
+                  <div className="custom-api-provider-section" style={{ gridColumn: 2, marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border, #2a2f3a)' }}>
                     <div className="settings-heading"><h3>AI 提供商</h3><p>选择 ModMind 云端服务，或填写自己的 OpenAI 兼容 API。自定义配置复用现有 Codex 运行时与 MCP 工具链，凭证经系统加密保存</p></div>
                     <div className="segmented-control" role="group" aria-label="AI 提供商" style={{ marginBottom: 12 }}>
                       <button type="button" className={settings.codingBackend === 'quota' ? 'active' : ''} onClick={() => void selectAiProvider('quota')}><CloudUpload size={14} /> ModMind Cloud</button>
@@ -5368,7 +5368,7 @@ export default function App(): React.JSX.Element {
                           {customApiModels.length ? <select className="external-agent-model-select" value={customApiModels.some((item) => item.id === customApiDraft.model) ? customApiDraft.model : ''} onChange={(event) => { if (event.target.value) setCustomApiDraft((current) => ({ ...current, model: event.target.value })) }}><option value="">从已扫描模型中选择</option>{customApiModels.map((model) => <option key={model.id} value={model.id}>{model.id}{model.ownedBy ? ` (${model.ownedBy})` : ''}</option>)}</select> : null}
                         </div>
                         <div className="external-agent-reasoning-control"><span>思考强度</span><div role="group" aria-label="自定义 API 思考强度">{(['low', 'medium', 'high', 'xhigh', 'max', 'ultra'] as const).map((value) => <button type="button" className={customApiDraft.reasoningEffort === value ? 'active' : ''} key={value} onClick={() => setCustomApiDraft((current) => ({ ...current, reasoningEffort: value }))}>{value}</button>)}</div></div>
-                        <div className="settings-actions editor-actions">
+                        <div className="settings-actions editor-actions" style={{ gridColumn: '1 / -1' }}>
                           <span><ShieldCheck size={15} />凭证通过系统加密保存</span>
                           <div className="settings-button-group">
                             <button className="secondary-button compact" type="button" disabled={customApiTesting || !customApiDraft.baseUrl?.trim() || !customApiDraft.model?.trim()} onClick={() => void testCustomApiConnection()}>{customApiTesting ? <LoaderCircle className="spin" size={14} /> : <Link2 size={14} />}测试连接</button>
@@ -5376,7 +5376,7 @@ export default function App(): React.JSX.Element {
                           </div>
                         </div>
                         {customApiTestResult ? (
-                          <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 8, fontSize: 12.5, lineHeight: 1.6, background: customApiTestResult.ok ? 'rgba(61,220,132,0.1)' : customApiTestResult.status === 'insufficient_balance' ? 'rgba(245,166,35,0.1)' : 'rgba(255,93,93,0.1)', border: `1px solid ${customApiTestResult.ok ? 'rgba(61,220,132,0.4)' : customApiTestResult.status === 'insufficient_balance' ? 'rgba(245,166,35,0.4)' : 'rgba(255,93,93,0.4)'}`, color: customApiTestResult.ok ? '#3ddc84' : customApiTestResult.status === 'insufficient_balance' ? '#f5a623' : '#ff8a8a', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                          <div style={{ gridColumn: '1 / -1', marginTop: 10, padding: '8px 12px', borderRadius: 8, fontSize: 12.5, lineHeight: 1.6, background: customApiTestResult.ok ? 'rgba(61,220,132,0.1)' : customApiTestResult.status === 'insufficient_balance' ? 'rgba(245,166,35,0.1)' : 'rgba(255,93,93,0.1)', border: `1px solid ${customApiTestResult.ok ? 'rgba(61,220,132,0.4)' : customApiTestResult.status === 'insufficient_balance' ? 'rgba(245,166,35,0.4)' : 'rgba(255,93,93,0.4)'}`, color: customApiTestResult.ok ? '#3ddc84' : customApiTestResult.status === 'insufficient_balance' ? '#f5a623' : '#ff8a8a', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
                             {customApiTestResult.ok ? <Check size={14} style={{ flexShrink: 0, marginTop: 2 }} /> : customApiTestResult.status === 'insufficient_balance' ? <CircleAlert size={14} style={{ flexShrink: 0, marginTop: 2 }} /> : <CircleAlert size={14} style={{ flexShrink: 0, marginTop: 2 }} />}
                             <div>
                               <div>{customApiTestResult.message}</div>
