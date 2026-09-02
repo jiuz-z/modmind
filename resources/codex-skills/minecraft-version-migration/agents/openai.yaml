@@ -1,0 +1,4 @@
+interface:
+  display_name: "Minecraft Version Migration"
+  short_description: "Migrate Java mods across versions and loaders"
+  default_prompt: "Use $minecraft-version-migration to migrate this Java mod to the requested version and loader."

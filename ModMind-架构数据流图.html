@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ModMind 架构审计 · 已确认数据流</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel2:#1e222b; --line:#2a2f3a;
+    --txt:#e6e9ef; --dim:#8b93a3; --accent:#5b9dff; --green:#3ddc84; --amber:#f5a623; --red:#ff5d5d;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;padding:32px 20px}
+  h1{font-size:20px;margin:0 0 4px}
+  .sub{color:var(--dim);font-size:13px;margin-bottom:24px}
+  .wrap{max-width:1180px;margin:0 auto}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;margin-bottom:20px}
+  .card h2{font-size:14px;margin:0 0 14px;color:var(--accent);letter-spacing:.5px}
+  /* lane layout */
+  .lane{border:1px solid var(--line);border-radius:10px;background:var(--panel2);padding:10px;position:relative}
+  .lane .tag{position:absolute;top:-10px;left:14px;background:var(--panel2);padding:0 8px;font-size:12px;color:var(--dim);border:1px solid var(--line);border-radius:20px}
+  .box{background:#20242e;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:12.5px;line-height:1.55}
+  .box b{display:block;font-size:13px;margin-bottom:2px}
+  .box .src{color:var(--dim);font-size:11px;font-family:Consolas,monospace;display:block;margin-top:3px}
+  .arrow{display:flex;flex-direction:column;align-items:center;color:var(--dim);font-size:11px;padding:4px 0}
+  .arrow .lbl{margin-bottom:2px;font-family:Consolas,monospace;font-size:10.5px;color:var(--amber)}
+  .arrow .glyph{font-size:18px;color:var(--accent);line-height:1}
+  .grid{display:grid;grid-template-columns:1fr;gap:0}
+  .note{font-size:12px;color:var(--dim);line-height:1.6}
+  .badge{display:inline-block;font-size:10.5px;padding:1px 8px;border-radius:20px;margin-left:6px;vertical-align:1px}
+  .b-green{background:rgba(61,220,132,.15);color:var(--green);border:1px solid rgba(61,220,132,.4)}
+  .b-amber{background:rgba(245,166,35,.12);color:var(--amber);border:1px solid rgba(245,166,35,.4)}
+  .b-red{background:rgba(255,93,93,.12);color:var(--red);border:1px solid rgba(255,93,93,.4)}
+  .b-blue{background:rgba(91,157,255,.12);color:var(--accent);border:1px solid rgba(91,157,255,.4)}
+  .prompt{color:var(--amber);font-weight:600}
+  .code{font-family:Consolas,monospace;font-size:11px;color:#9fb4d8}
+  .unknown{color:var(--red);font-weight:600}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--dim)}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .dot{width:10px;height:10px;border-radius:3px;display:inline-block}
+  .row2{display:grid;grid-template-columns:1fr;gap:18px}
+  @media(min-width:900px){.row2{grid-template-columns:1fr 1fr}}
+  ol li{margin:6px 0;font-size:12.5px;line-height:1.6}
+  ol li code{font-family:Consolas,monospace;font-size:11px;color:#9fb4d8}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>ModMind 架构审计 · 已确认数据流</h1>
+  <div class="sub">依据源码实证（src/main + src/renderer），非推测。源码：v1.4.4 · siteUrl=https://ether-studio.top/</div>
+
+  <div class="card">
+    <h2>图例</h2>
+    <div class="legend">
+      <span><span class="dot" style="background:#20242e;border:1px solid var(--line)"></span>本地组件/进程</span>
+      <span><span class="dot" style="background:#3ddc84"></span>本地确定性操作</span>
+      <span><span class="dot" style="background:#5b9dff"></span>网络边界</span>
+      <span><span class="dot" style="background:#f5a623"></span>携带用户 Prompt 的请求</span>
+      <span><span class="dot" style="background:#ff5d5d"></span>源码无法确认（未知）</span>
+    </div>
+  </div>
+
+  <!-- 主链路 -->
+  <div class="card">
+    <h2>链路一 · 主 Agent 链路：本地 UI → 本地 Agent Runtime → 云端 LLM</h2>
+    <div class="grid">
+      <div class="lane"><span class="tag">本地 · Renderer</span>
+        <div class="box"><b>用户输入</b>AgentWorkbench.tsx / App.tsx<span class="src">src/renderer/src/components/AgentWorkbench.tsx</span></div>
+      </div>
+      <div class="arrow"><span class="lbl">IPC ai:createCode(prompt)</span><span class="glyph">↓</span></div>
+      <div class="lane"><span class="tag">本地 · Main 进程</span>
+        <div class="box"><b>入口调度</b>ipcMain.handle('ai:createCode') → createAiCode → runExternalCodingAgent<span class="src">src/main/index.ts L8360 / L5579</span></div>
+      </div>
+      <div class="arrow"><span class="lbl">prepareQuotaCodex / prepareConfiguredCodex</span><span class="glyph">↓</span></div>
+      <div class="lane"><span class="tag">本地 · Agent Runtime（真实存在）</span>
+        <div class="box"><b>Codex CLI 进程</b>（随应用托管下载 v0.146.0，工具循环在本机执行）<br>config.toml：base_url=本地adapter · wire_api="responses" · model_provider="thirdparty"<span class="src">src/main/codexSetup.ts / externalAgents.ts</span></div>
+      </div>
+      <div class="arrow"><span class="lbl"><span class="prompt">HTTP POST /v1/responses（含用户 prompt 的 messages/input）</span></span><span class="glyph">↓</span></div>
+      <div class="lane"><span class="tag">本地 · 协议适配器</span>
+        <div class="box"><b>ChatCompletionsAdapter</b>（本地 HTTP server 127.0.0.1，Responses→Chat Completions 翻译/直通）<span class="src">src/main/chatCompletionsAdapter.ts</span></div>
+      </div>
+      <div class="arrow"><span class="lbl"><span class="prompt">HTTP POST {relay}/v1/responses 或 /v1/chat/completions · Bearer apiKey</span></span><span class="glyph">↓</span></div>
+      <div class="lane"><span class="tag">云端 · 网络边界</span>
+        <div class="box"><b>云端 Relay 服务</b>（relay baseUrl 来自设备凭证；站点 ether-studio.top）<span class="src">deviceIntegration.ts → poll 下发 baseUrl</span></div>
+      </div>
+      <div class="arrow"><span class="lbl">→ LLM</span><span class="glyph">↓</span></div>
+      <div class="lane"><span class="tag">云端</span>
+        <div class="box"><b>LLM 推理</b><span class="unknown">（模型供应商/云端是否另有 Agent 循环：源码不可见 = 未知）</span></div>
+      </div>
+      <div class="arrow"><span class="lbl">tokens / 工具调用 返回</span><span class="glyph">↓</span></div>
+      <div class="lane"><span class="tag">本地 · Agent 循环继续</span>
+        <div class="box"><b>Codex 调用 ModMind MCP 工具</b>（modmind-mcp-server.mjs → 本地 bridge HTTP → Gradle 构建/Minecraft 测试/文件编辑/Blockbench…）<span class="src">externalAgents.ts MCP_SERVER_SOURCE</span></div>
+      </div>
+      <div class="arrow"><span class="lbl">IPC ai:output 事件</span><span class="glyph">↓</span></div>
+      <div class="lane"><span class="tag">本地</span>
+        <div class="box"><b>结果回到 UI</b>；产物写回项目目录 → Minecraft/工具<span class="src">src/renderer</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 远端链路 -->
+  <div class="card">
+    <h2>链路二 · 远端控制链路：云端 Agent → WebSocket → 本机执行</h2>
+    <div class="grid">
+      <div class="lane"><span class="tag">云端</span>
+        <div class="box"><b>云端用户/Agent</b><span class="src">（云端 UI 源码不可见 = 未知，仅能确认本机接收 server.command）</span></div>
+      </div>
+      <div class="arrow"><span class="lbl">WebSocket wss://ether-studio.top/ws/remote</span><span class="glyph">↓</span></div>
+      <div class="lane"><span class="tag">本地 · Main 进程</span>
+        <div class="box"><b>RemoteClientService</b>（device.hello 鉴权 → 收到 <span class="prompt">server.command（云端用户 Prompt）</span> → device.response/activity）<span class="src">src/main/remoteClientService.ts · remoteEndpointFromSite()</span></div>
+      </div>
+      <div class="arrow"><span class="lbl">onCommand → RemoteControllerAgent.handle</span><span class="glyph">↓</span></div>
+      <div class="lane"><span class="tag">本地 · 路由判断</span>
+        <div class="box"><b>RemoteController 先调一次 LLM</b><span class="prompt">（POST {relay}/chat/completions，携带云端用户 Prompt）</span>判定 WORKBENCH / APP_CONTROL<span class="src">src/main/remoteAgentController.ts L309</span></div>
+      </div>
+      <div class="arrow"><span class="lbl">WORKBENCH → runRemoteWorkbenchTask</span><span class="glyph">↓</span></div>
+      <div class="lane"><span class="tag">本地 · Agent Runtime</span>
+        <div class="box"><b>再次走链路一</b>（本地 Codex CLI → 本地 adapter → 云端 LLM）执行项目任务<span class="src">src/main/index.ts L4231</span></div>
+      </div>
+      <div class="arrow"><span class="lbl">结果回传云端</span><span class="glyph">↓</span></div>
+      <div class="lane"><span class="tag">云端</span>
+        <div class="box"><b>云端展示</b><span class="src">（不可见 = 未知）</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>结论（第五部分）</h2>
+    <div class="note">
+      <b style="color:var(--green)">判定：C（本地 Agent 与云端 Agent 并存），但需精确化——</b><br>
+      本机运行<b>完整可执行的 Agent Runtime（Codex CLI + ModMind MCP 工具桥）</b>，云端主要负责 <b>LLM 推理 + 账号/额度/中继 + 远端指令下发</b>。<br>
+      · 本地有 Agent：codexSetup.ts / externalAgents.ts（本地进程、工具循环、MCP 桥）<br>
+      · 云端负责 LLM：设备凭证 relay baseUrl + apiKey，经本地 adapter 转发<br>
+      · 云端另有“控制器型 Agent”：remoteClientService.ts / remoteAgentController.ts（WebSocket 下发指令，本机执行）<br>
+      · 不存在“纯云端 Agent”：本机不存在的任何 Agent 循环环节在源码中均标记为【未知】，未猜测。
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>关键证据索引</h2>
+    <ol>
+      <li><code>service-config.json</code> 读取：<code>src/main/index.ts → configuredDeviceSiteUrl()</code>（L760-774，env 优先→文件→normalizeSiteUrl）</li>
+      <li>凭证持久化：<code>userData/device-credentials.json</code>（apiKey 由 safeStorage 加密）</li>
+      <li>站点 API：<code>src/main/deviceIntegration.ts</code>（/api/device/code|poll|usage|fastmode、/api/version）+ <code>index.ts L2461</code>（/api/device/image-lease）</li>
+      <li>本地 Agent：<code>codexSetup.ts</code>（下载 Codex CLI、config.toml、env_key=MODMIND_THIRD_PARTY_API_KEY、wire_api=responses）</li>
+      <li>本地 adapter：<code>chatCompletionsAdapter.ts</code>（127.0.0.1 随机端口，/v1/responses ↔ /chat/completions）</li>
+      <li>本地 MCP 桥：<code>externalAgents.ts MCP_SERVER_SOURCE</code>（modmind-mcp-server.mjs → 127.0.0.1 bridge /tool）</li>
+      <li>WebSocket 远端：<code>remoteClientService.ts</code>（wss://{site}/ws/remote）+ <code>remoteAgentController.ts</code></li>
+      <li>认证：Bearer apiKey（device poll 下发，本地 safeStorage 保存）；无 JWT/Cookie 机制</li>
+    </ol>
+  </div>
+</div>
+</body>
+</html>

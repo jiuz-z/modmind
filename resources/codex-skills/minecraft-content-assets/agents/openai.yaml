@@ -1,0 +1,4 @@
+interface:
+  display_name: "Minecraft Content Assets"
+  short_description: "Create and validate coordinated Minecraft resources"
+  default_prompt: "Use $minecraft-content-assets to build and validate the resources for this feature."

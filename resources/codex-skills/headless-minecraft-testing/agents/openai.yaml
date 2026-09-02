@@ -1,0 +1,4 @@
+interface:
+  display_name: "Headless Minecraft Testing"
+  short_description: "Run managed and external headless Minecraft tests"
+  default_prompt: "Use $headless-minecraft-testing to run or diagnose the appropriate headless Minecraft test."
